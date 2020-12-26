@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<data>
+	<obswebsocket><!-- OBS Websocket configuration -->
+		<host>192.168.10.137</host>
+		<port>4444</port>
+		<pass/>
+	</obswebsocket>
+	<scene>
+		<name>CAM 1</name> <!-- Scene-Name -->
+	    <gpio_preview>26</gpio_preview> <!-- Define GPIO for on-preview-LED -->
+		<gpio_program>6</gpio_program>  <!-- Define GPIO for on-program-LED -->
+	</scene>
+	<scene>
+		<name>CAM 2</name> <!-- Scene-Name -->
+	    <gpio_preview>20</gpio_preview> <!-- Define GPIO for on-preview-LED -->
+		<gpio_program>12</gpio_program> <!-- Define GPIO for on-program-LED -->
+	</scene>
+	<!-- 
+	<scene>
+		<name>CAM 3</name> 
+	    <gpio_preview>18</gpio_preview> 
+		<gpio_program>23</gpio_program>
+	</scene>
+	...
+	-->
+</data>
