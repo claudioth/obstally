@@ -90,9 +90,48 @@ class OBStally:
         ws = obsws(self.obs['host'],
                    self.obs['port'],
                    self.obs['pass'])
+        ws.register(self.on_switch, events.SwitchScenes)
+        ws.register(self.on_preview, events.PreviewSceneChanged)
         ws.connect()
     
+    def on_switch(self, message):
+        name = message.getSceneName()
+        for s in self.scenes:
+            if s == name:
+                print ("GPIO {:02d}: '{}' on".format(
+                    int(self.scenes[s]['gpio_program']), s))
+                self.scenes[s]['led_program'].on()
+            else:
+                self.scenes[s]['led_program'].off()
+        if not self.scenes[s]:
+            print ("{} on, but unknown".format(s))
+
+    def on_preview(self, message):
+        name = message.getSceneName()
+        for s in self.scenes:
+            if s == name:
+                print ("GPIO {:02d}: '{}' preview".format(
+                    int(self.scenes[s]['gpio_preview']), s))
+                self.scenes[s]['led_preview'].on()
+            else:
+                self.scenes[s]['led_preview'].off()
+        if not self.scenes[s]:
+            print ("{} preview, but unknown".format(s))
+
+    def run(self):
+        """
+        rund endless
+        """
+        # FIXME: ok for the beginning...
+        debug("run()")
+        try:
+            while True:
+                pass
+        except KeyboardInterrupt:
+            pass
+
 
 if __name__ == "__main__":
     # execute only if run as a script
     tally = OBStally()
+    tally.run()
