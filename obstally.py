@@ -5,8 +5,10 @@
 # * real XML config, not depenting of tag ordering
 # * no limitation of scene amount
 # * enable LED directly on startup if scenes are shown
+# * (Optional) Same CAM can not be preview and program at the same time
 
 DEBUG = True  # additional debugging output
+ONLY_ONE_LED_PER_CAM_ON = True
 
 # Please define here the name of your XMLS config file
 # (by default it is saved on the save path as the executable)
@@ -35,6 +37,9 @@ class OBStally:
     # the websocket
     ws = None
 
+    # CACHE: Last activated LED for a the spefic types
+    act_gpio = { 'program': None, 'preview': None }
+    
     '''
     INITIALISATION
     '''
@@ -139,8 +144,10 @@ class OBStally:
 
         def _switch_gpio(objects, typ, selection):
             on = False
+            self.act_gpio[typ] = ""
             for s in objects:
                 if s == selection:
+                    self.act_gpio[typ] = s
                     print ("GPIO {:02d}: '{}' {}".format(
                         objects[s]['gpio'][typ],
                         s,
@@ -149,6 +156,17 @@ class OBStally:
                     on = True
                 else:
                     objects[s]['led'][typ].off()
+            # only on "program" disable "preview" LED if its the same CAM
+            if ONLY_ONE_LED_PER_CAM_ON:
+                if self.act_gpio['program'] and self.act_gpio['preview']:
+                    print(typ, self.act_gpio['program'], self.act_gpio['preview'])
+                    if self.act_gpio['program'] == self.act_gpio['preview']:
+                        objects[self.act_gpio['preview']]['led']['preview'].off()
+                    else:
+                        objects[self.act_gpio['preview']]['led']['preview'].on()
+                # In case "program" is unknown, that (re-)enable "preview" LED
+                if not self.act_gpio['program'] and self.act_gpio['preview']:
+                    objects[self.act_gpio['preview']]['led']['preview'].on()
             return on
 
         # check scenes
