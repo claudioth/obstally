@@ -12,11 +12,15 @@ from os.path import abspath, dirname
 XML_FILE = "{}/obstally.xml".format(dirname(abspath(__file__)))
 
 
+from gpiozero import LED
 from xml.etree import ElementTree 
+from RPi import GPIO
+
 
 def debug(*txt):
     if DEBUG:
         print(txt[0] if len(txt) == 1 else txt)
+
 
 class OBStally:
     # configuration of the obswebsocket (host, port, pass)
@@ -29,8 +33,13 @@ class OBStally:
         initialise the enviroment
         """
         debug("__init__()")
+        # basic python environment initialisation
+        GPIO.setmode(GPIO.BCM)
+        GPIO.setwarnings(False)
+        GPIO.cleanup()        
         # read xml an init leds based on config
         self.read_xml_config()
+        self.initialise_leds()
         
     def read_xml_config(self):
         """
@@ -56,6 +65,18 @@ class OBStally:
             self.scenes[scene['name']] = scene
         if not self.scenes:
             print("WARNING: no scenes configured!")
+
+    def initialise_leds(self):
+        """
+        initialise LED objects and gpios 
+        """
+        debug("initialise_leds()")
+        for s in self.scenes:
+            self.scenes[s]['led_program'] = LED(self.scenes[s]['gpio_program'])
+            self.scenes[s]['led_program'].off()
+            self.scenes[s]['led_preview'] = LED(self.scenes[s]['gpio_preview'])
+            self.scenes[s]['led_preview'].off()
+
 
 if __name__ == "__main__":
     # execute only if run as a script
