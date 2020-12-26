@@ -4,6 +4,7 @@
 # Features:
 # * real XML config, not depenting of tag ordering
 # * no limitation of scene amount
+# * enable LED directly on startup if scenes are shown
 
 DEBUG = True
 # Please define here the name of your XMLS config file
@@ -28,7 +29,9 @@ class OBStally:
     obs = {}
     # configuration of the OBS scenes (name, gpios, ...)
     scenes = {}
-    
+    # the websocket
+    ws = None
+
     def __init__(self):
         """
         initialise the enviroment
@@ -39,9 +42,12 @@ class OBStally:
         GPIO.setwarnings(False)
         GPIO.cleanup()        
         # read xml an init leds based on config
-        self.read_xml_config()
-        self.initialise_leds()
+        if not self.read_xml_config():
+            return
         self.obs_connect()
+        self.initialise_leds()
+        # run endless
+        self.run()
         
     def read_xml_config(self):
         """
@@ -58,7 +64,7 @@ class OBStally:
         except AttributeError:
             print ("ERROR: could not find 'obswebsocket' in XMLfile '{}'".format(
                 XML_FILE))
-            return
+            return False
         for s in root.findall('scene'):
             scene = {}
             for child in s.findall('*'):
@@ -67,6 +73,7 @@ class OBStally:
             self.scenes[scene['name']] = scene
         if not self.scenes:
             print("WARNING: no scenes configured!")
+        return True
 
     def initialise_leds(self):
         """
@@ -78,6 +85,14 @@ class OBStally:
             self.scenes[s]['led_program'].off()
             self.scenes[s]['led_preview'] = LED(self.scenes[s]['gpio_preview'])
             self.scenes[s]['led_preview'].off()
+        # enable LED if scene is actualy on preview
+        scene = self.ws.call(requests.GetPreviewScene())
+        if scene.datain and scene.datain['name'] in self.scenes:
+            self.scenes[scene.datain['name']]['led_preview'].on()
+        # enable LED if scene is actualy on program
+        scene = self.ws.call(requests.GetCurrentScene())
+        if scene.datain and scene.datain['name'] in self.scenes:
+            self.scenes[scene.datain['name']]['led_program'].on()
 
     def obs_connect(self):
         """
@@ -87,12 +102,12 @@ class OBStally:
             self.obs['host'],
             self.obs['port'],
             ))
-        ws = obsws(self.obs['host'],
+        self.ws = obsws(self.obs['host'],
                    self.obs['port'],
                    self.obs['pass'])
-        ws.register(self.on_switch, events.SwitchScenes)
-        ws.register(self.on_preview, events.PreviewSceneChanged)
-        ws.connect()
+        self.ws.register(self.on_switch, events.SwitchScenes)
+        self.ws.register(self.on_preview, events.PreviewSceneChanged)
+        self.ws.connect()
     
     def on_switch(self, message):
         name = message.getSceneName()
@@ -134,4 +149,3 @@ class OBStally:
 if __name__ == "__main__":
     # execute only if run as a script
     tally = OBStally()
-    tally.run()

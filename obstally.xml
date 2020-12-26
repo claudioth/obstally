@@ -1,26 +1,33 @@
 <?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <data>
-	<obswebsocket><!-- OBS Websocket configuration -->
+	<!-- OBS Websocket configuration -->
+	<obswebsocket>
 		<host>192.168.10.137</host>
 		<port>4444</port>
 		<pass/>
 	</obswebsocket>
+	<!-- OBS scene definitions -->
 	<scene>
-		<name>CAM 1</name> <!-- Scene-Name -->
+		<name>HDMI 1</name> <!-- Scene-Name -->
+	    <gpio_preview>2</gpio_preview> <!-- Define GPIO for on-preview-LED -->
+		<gpio_program>3</gpio_program>  <!-- Define GPIO for on-program-LED -->
+	</scene>
+	<scene>
+		<name>HDMI 2</name> <!-- Scene-Name -->
+	    <gpio_preview>4</gpio_preview> <!-- Define GPIO for on-preview-LED -->
+		<gpio_program>5</gpio_program> <!-- Define GPIO for on-program-LED -->
+	</scene>
+	<!-- <scene>...</scene>	-->
+	<!-- OBS sources definitions -->
+	<source>
+		<name>iPhone CT (NDI)</name> <!-- Scene-Name -->
 	    <gpio_preview>26</gpio_preview> <!-- Define GPIO for on-preview-LED -->
 		<gpio_program>6</gpio_program>  <!-- Define GPIO for on-program-LED -->
-	</scene>
-	<scene>
-		<name>CAM 2</name> <!-- Scene-Name -->
+	</source>
+	<source>
+		<name>iPhone DTh (NDI)</name> <!-- Scene-Name -->
 	    <gpio_preview>20</gpio_preview> <!-- Define GPIO for on-preview-LED -->
 		<gpio_program>12</gpio_program> <!-- Define GPIO for on-program-LED -->
-	</scene>
-	<!-- 
-	<scene>
-		<name>CAM 3</name> 
-	    <gpio_preview>18</gpio_preview> 
-		<gpio_program>23</gpio_program>
-	</scene>
-	...
-	-->
+	</source>
+	<!-- <source>...</source>	-->
 </data>
