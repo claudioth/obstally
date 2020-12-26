@@ -57,6 +57,7 @@ class OBStally:
         debug("read_xml_config()")
         xml = ElementTree.parse(XML_FILE)
         root = xml.getroot()
+        gpios = []
         try:
             for child in root.find('obswebsocket').findall('*'):
                 debug(child.tag, child.text)
@@ -70,6 +71,12 @@ class OBStally:
             for child in s.findall('*'):
                 debug(child.tag, child.text)
                 scene[child.tag] = child.text
+                if "gpio" in child.tag:
+                    if int(child.text) in gpios:
+                        print("ERROR: GPIO {} can only be used once!".format(
+                            child.text))
+                        return False
+                    gpios.append(int(child.text))
             self.scenes[scene['name']] = scene
         if not self.scenes:
             print("WARNING: no scenes configured!")
