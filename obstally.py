@@ -13,6 +13,7 @@ XML_FILE = "{}/obstally.xml".format(dirname(abspath(__file__)))
 
 
 from gpiozero import LED
+from obswebsocket import obsws, events, requests
 from xml.etree import ElementTree 
 from RPi import GPIO
 
@@ -40,6 +41,7 @@ class OBStally:
         # read xml an init leds based on config
         self.read_xml_config()
         self.initialise_leds()
+        self.obs_connect()
         
     def read_xml_config(self):
         """
@@ -77,6 +79,19 @@ class OBStally:
             self.scenes[s]['led_preview'] = LED(self.scenes[s]['gpio_preview'])
             self.scenes[s]['led_preview'].off()
 
+    def obs_connect(self):
+        """
+        initialisation ob OBS websocket 
+        """
+        debug("obs_connect({}:{})".format(
+            self.obs['host'],
+            self.obs['port'],
+            ))
+        ws = obsws(self.obs['host'],
+                   self.obs['port'],
+                   self.obs['pass'])
+        ws.connect()
+    
 
 if __name__ == "__main__":
     # execute only if run as a script
