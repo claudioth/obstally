@@ -100,17 +100,12 @@ class OBStally:
         initialise LED objects and gpios
         """
         debug("initialise_leds()")
-        for s in self.scenes:
-            self.scenes[s]['led_program'] = LED(self.scenes[s]['gpio_program'])
-            self.scenes[s]['led_program'].off()
-            self.scenes[s]['led_preview'] = LED(self.scenes[s]['gpio_preview'])
-            self.scenes[s]['led_preview'].off()
-
-        for s in self.sources:
-            self.sources[s]['led_program'] = LED(self.sources[s]['gpio_program'])
-            self.sources[s]['led_program'].off()
-            self.sources[s]['led_preview'] = LED(self.sources[s]['gpio_preview'])
-            self.sources[s]['led_preview'].off()
+        for o in (self.scenes, self.sources):
+            for s in o:
+                o[s]['led_program'] = LED(o[s]['gpio_program'])
+                o[s]['led_program'].off()
+                o[s]['led_preview'] = LED(o[s]['gpio_preview'])
+                o[s]['led_preview'].off()
         # enable LED if source is actualy on preview
         scene = self.ws.call(requests.GetPreviewScene())
         self.on_preview(scene, scene.datain['name'])
@@ -134,6 +129,7 @@ class OBStally:
         self.ws.connect()
     
     def on_switch(self, message, name = None):
+        debug("on_switch()")
         if not name:
             name = message.getSceneName().encode('utf-8')
         on = False
@@ -141,7 +137,7 @@ class OBStally:
         for s in self.scenes:
             if s == name:
                 print ("GPIO {:02d}: '{}' on".format(
-                    int(self.scenes[s]['gpio_program']), s))
+                    self.scenes[s]['gpio_program'], s))
                 self.scenes[s]['led_program'].on()
                 on = True
             else:
@@ -155,7 +151,7 @@ class OBStally:
             for s in self.sources:
                 if s in new_sources:
                     print ("GPIO {:02d}: '{}' on (source)".format(
-                        int(self.sources[s]['gpio_program']), s))
+                        self.sources[s]['gpio_program'], s))
                     self.sources[s]['led_program'].on()
                     on = True
                 else:
@@ -164,6 +160,7 @@ class OBStally:
             print ("       : '{}' on, but unknown".format(name))
 
     def on_preview(self, message, name = None):
+        debug("on_preview()")
         if not name:
             name = message.getSceneName().encode('utf-8')
         on = False
@@ -171,7 +168,7 @@ class OBStally:
         for s in self.scenes:
             if s == name:
                 print ("GPIO {:02d}: '{}' preview".format(
-                    int(self.scenes[s]['gpio_preview']), s))
+                    self.scenes[s]['gpio_preview'], s))
                 self.scenes[s]['led_preview'].on()
                 on = True
             else:
@@ -185,7 +182,7 @@ class OBStally:
             for s in self.sources:
                 if s in new_sources:
                     print ("GPIO {:02d}: '{}' preview (source)".format(
-                        int(self.sources[s]['gpio_preview']), s))
+                        self.sources[s]['gpio_preview'], s))
                     self.sources[s]['led_preview'].on()
                     on = True
                 else:
