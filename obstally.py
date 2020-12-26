@@ -6,9 +6,11 @@
 # * no limitation of scene amount
 # * enable LED directly on startup if scenes are shown
 # * (Optional) Same CAM can not be preview and program at the same time
+# * (Optional) Maximal one LED enable at the same time. Program has priority
 
 DEBUG = True  # additional debugging output
-ONLY_ONE_LED_PER_CAM_ON = True
+ONLY_ONE_LED_PER_CAM_ON = True  # Same CAM can not be preview and program at the same time
+MAX_ONE_LED_ON = True  # maximal one LED enabled at the same time, program LED has priority
 
 # Please define here the name of your XMLS config file
 # (by default it is saved on the save path as the executable)
@@ -167,6 +169,9 @@ class OBStally:
                 # In case "program" is unknown, that (re-)enable "preview" LED
                 if not self.act_gpio['program'] and self.act_gpio['preview']:
                     objects[self.act_gpio['preview']]['led']['preview'].on()
+            if MAX_ONE_LED_ON:
+                if self.act_gpio['program'] and self.act_gpio['preview']:
+                    objects[self.act_gpio['preview']]['led']['preview'].off()
             return on
 
         # check scenes
