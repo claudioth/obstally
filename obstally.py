@@ -6,7 +6,9 @@
 # * no limitation of scene amount
 # * enable LED directly on startup if scenes are shown
 
-DEBUG = True
+DEBUG = True  # additional debugging output
+PRGFIRST = True  # IF scene is in preview+program, only program LED is on
+
 # Please define here the name of your XMLS config file
 # (by default it is saved on the save path as the executable)
 from os.path import abspath, dirname
@@ -106,14 +108,17 @@ class OBStally:
             self.scenes[s]['led_program'].off()
             self.scenes[s]['led_preview'] = LED(self.scenes[s]['gpio_preview'])
             self.scenes[s]['led_preview'].off()
-        # enable LED if scene is actualy on preview
+        for s in self.sources:
+            self.sources[s]['led_program'] = LED(self.sources[s]['gpio_program'])
+            self.sources[s]['led_program'].off()
+            self.sources[s]['led_preview'] = LED(self.sources[s]['gpio_preview'])
+            self.sources[s]['led_preview'].off()
+        # enable LED if source is actualy on preview
         scene = self.ws.call(requests.GetPreviewScene())
-        if scene.datain and scene.datain['name'] in self.scenes:
-            self.scenes[scene.datain['name']]['led_preview'].on()
+        self.on_preview(scene, scene.name) 
         # enable LED if scene is actualy on program
         scene = self.ws.call(requests.GetCurrentScene())
-        if scene.datain and scene.datain['name'] in self.scenes:
-            self.scenes[scene.datain['name']]['led_program'].on()
+        self.on_switch(scene, scene.name) 
 
     def obs_connect(self):
         """
@@ -130,8 +135,9 @@ class OBStally:
         self.ws.register(self.on_preview, events.PreviewSceneChanged)
         self.ws.connect()
     
-    def on_switch(self, message):
-        name = message.getSceneName().encode('utf-8')
+    def on_switch(self, message, name = None):
+        if not name:
+            name = message.getSceneName().encode('utf-8')
         on = False
         # check scenes
         for s in self.scenes:
@@ -149,7 +155,7 @@ class OBStally:
                     new_sources.append(s['name'])
             for s in self.sources:
                 if s in new_sources:
-                    print ("GPIO {:02d}: '{}' preview (source)".format(
+                    print ("GPIO {:02d}: '{}' on (source)".format(
                         int(self.sources[s]['gpio_program']), s))
                     self.sources[s]['led_program'].on()
                     on = True
@@ -158,8 +164,9 @@ class OBStally:
         if not on:
             print ("{} on, but unknown".format(name))
 
-    def on_preview(self, message):
-        name = message.getSceneName().encode('utf-8')
+    def on_preview(self, message, name = None):
+        if not name:
+            name = message.getSceneName().encode('utf-8')
         on = False
         # check scenes
         for s in self.scenes:
