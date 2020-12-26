@@ -29,6 +29,8 @@ class OBStally:
     obs = {}
     # configuration of the OBS scenes (name, gpios, ...)
     scenes = {}
+    # configuration of the OBS sources (name, gpios, ...)
+    sources = {}
     # the websocket
     ws = None
 
@@ -78,8 +80,20 @@ class OBStally:
                         return False
                     gpios.append(int(child.text))
             self.scenes[scene['name']] = scene
-        if not self.scenes:
-            print("WARNING: no scenes configured!")
+        for s in root.findall('source'):
+            source = {}
+            for child in s.findall('*'):
+                debug(child.tag, child.text)
+                source[child.tag] = child.text
+                if "gpio" in child.tag:
+                    if int(child.text) in gpios:
+                        print("ERROR: GPIO {} can only be used once!".format(
+                            child.text))
+                        return False
+                    gpios.append(int(child.text))
+            self.sources[source['name']] = source
+        if not self.scenes and not self.sources:
+            print("WARNING: no scenes/sources configured!")
         return True
 
     def initialise_leds(self):
@@ -118,6 +132,8 @@ class OBStally:
     
     def on_switch(self, message):
         name = message.getSceneName().encode('utf-8')
+        on = False
+        # check scenes
         for s in self.scenes:
             if s == name:
                 print ("GPIO {:02d}: '{}' on".format(
@@ -125,20 +141,51 @@ class OBStally:
                 self.scenes[s]['led_program'].on()
             else:
                 self.scenes[s]['led_program'].off()
-        if not self.scenes[s]:
-            print ("{} on, but unknown".format(s))
+        # check sources
+        if not on and self.sources:
+            new_sources = []
+            for s in message.getSources():
+                if s['render'] == True:
+                    new_sources.append(s['name'])
+            for s in self.sources:
+                if s in new_sources:
+                    print ("GPIO {:02d}: '{}' preview (source)".format(
+                        int(self.sources[s]['gpio_program']), s))
+                    self.sources[s]['led_program'].on()
+                    on = True
+                else:
+                    self.sources[s]['led_program'].off()
+        if not on:
+            print ("{} on, but unknown".format(name))
 
     def on_preview(self, message):
         name = message.getSceneName().encode('utf-8')
+        on = False
+        # check scenes
         for s in self.scenes:
             if s == name:
                 print ("GPIO {:02d}: '{}' preview".format(
                     int(self.scenes[s]['gpio_preview']), s))
                 self.scenes[s]['led_preview'].on()
+                on = True
             else:
                 self.scenes[s]['led_preview'].off()
-        if not self.scenes[s]:
-            print ("{} preview, but unknown".format(s))
+        # check sources
+        if not on and self.sources:
+            new_sources = []
+            for s in message.getSources():
+                if s['render'] == True:
+                    new_sources.append(s['name'])
+            for s in self.sources:
+                if s in new_sources:
+                    print ("GPIO {:02d}: '{}' preview (source)".format(
+                        int(self.sources[s]['gpio_preview']), s))
+                    self.sources[s]['led_preview'].on()
+                    on = True
+                else:
+                    self.sources[s]['led_preview'].off()
+        if not on:
+            print ("       : '{}' preview, but unknown".format(name))
 
     def run(self):
         """
