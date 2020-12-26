@@ -8,7 +8,7 @@
 # * (Optional) Same CAM can not be preview and program at the same time
 # * (Optional) Maximal one LED enable at the same time. Program has priority
 
-DEBUG = True  # additional debugging output
+DEBUG = False  # additional debugging output
 ONLY_ONE_LED_PER_CAM_ON = True  # Same CAM can not be preview and program at the same time
 MAX_ONE_LED_ON = True  # maximal one LED enabled at the same time, program LED has priority
 
@@ -144,38 +144,46 @@ class OBStally:
         if not name:
             name = message.getSceneName().encode('utf-8')
 
-        def _switch_gpio(objects, typ, selection):
+        def _switch_gpio(objtyp, objects, typ, selection):
             on = False
-            self.act_gpio[typ] = ""
+            self.act_gpio[typ] = None
             for s in objects:
-                if s == selection:
-                    self.act_gpio[typ] = s
-                    print ("GPIO {:02d}: '{}' {}".format(
+                if s in selection:
+                    self.act_gpio[typ] = (objtyp,s)
+                    print ("GPIO {:02d}: {} '{}' {}".format(
                         objects[s]['gpio'][typ],
+                        "scene  " if objtyp == 'scenes' else "source ",
                         s,
                         "on" if typ == "program" else typ))
                     objects[s]['led'][typ].on()
                     on = True
                 else:
                     objects[s]['led'][typ].off()
-            # only on "program" disable "preview" LED if its the same CAM
+            if not self.act_gpio['preview']:
+                return on
+            # HINT: The enabled LEDs can be one from scenes or sources, so both mut be checkes
+            prev_obj = self.scenes if self.act_gpio['preview'][0] == 'scenes' else self.sources
             if ONLY_ONE_LED_PER_CAM_ON:
+                # FEATURE: Avoid showing both LEDs for one CAM
+                # Each CAM can be only in program  or in preview. Showing both is
+                # confusing for the person in front of the cam
                 if self.act_gpio['program'] and self.act_gpio['preview']:
-                    print(typ, self.act_gpio['program'], self.act_gpio['preview'])
                     if self.act_gpio['program'] == self.act_gpio['preview']:
-                        objects[self.act_gpio['preview']]['led']['preview'].off()
+                        prev_obj[self.act_gpio['preview'][1]]['led']['preview'].off()
                     else:
-                        objects[self.act_gpio['preview']]['led']['preview'].on()
+                        prev_obj[self.act_gpio['preview'][1]]['led']['preview'].on()
                 # In case "program" is unknown, that (re-)enable "preview" LED
                 if not self.act_gpio['program'] and self.act_gpio['preview']:
-                    objects[self.act_gpio['preview']]['led']['preview'].on()
+                    prev_obj[self.act_gpio['preview'][1]]['led']['preview'].on()
             if MAX_ONE_LED_ON:
+                # FEATURE: maximal one LED can be ON at time
+                # in case program+preview are ON, disable preview
                 if self.act_gpio['program'] and self.act_gpio['preview']:
-                    objects[self.act_gpio['preview']]['led']['preview'].off()
+                    prev_obj[self.act_gpio['preview'][1]]['led']['preview'].off()
             return on
 
         # check scenes
-        on = _switch_gpio(self.scenes, typ, name)
+        on = _switch_gpio('scenes', self.scenes, typ, name)
         # check sources
         if not on and self.sources:
             new_sources = []
@@ -183,7 +191,7 @@ class OBStally:
                 # consider only the visible ones...
                 if s['render'] == True:
                     new_sources.append(s['name'])
-            on = _switch_gpio(self.sources, typ, new_sources)
+            on = _switch_gpio('sources', self.sources, typ, new_sources)
         if not on:
             print ("       : '{}' on, but unknown".format(name))
 
