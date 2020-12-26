@@ -117,7 +117,7 @@ class OBStally:
         self.ws.connect()
     
     def on_switch(self, message):
-        name = message.getSceneName()
+        name = message.getSceneName().encode('utf-8')
         for s in self.scenes:
             if s == name:
                 print ("GPIO {:02d}: '{}' on".format(
@@ -129,7 +129,7 @@ class OBStally:
             print ("{} on, but unknown".format(s))
 
     def on_preview(self, message):
-        name = message.getSceneName()
+        name = message.getSceneName().encode('utf-8')
         for s in self.scenes:
             if s == name:
                 print ("GPIO {:02d}: '{}' preview".format(
