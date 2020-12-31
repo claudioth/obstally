@@ -21,7 +21,6 @@ XML_FILE = "{}/obstally.xml".format(dirname(abspath(__file__)))
 from gpiozero import LED
 from obswebsocket import obsws, events, requests
 from xml.etree import ElementTree
-from RPi import GPIO
 
 
 def debug(*txt):
@@ -31,7 +30,7 @@ def debug(*txt):
 
 class OBStally:
     # configuration of the obswebsocket (host, port, pass)
-    obs = {}
+    obs = {'host': None, 'port': None, 'pass': None, 'gpio_connected': None }
     # configuration of the OBS scenes (name, gpios, ...)
     scenes = {}
     # configuration of the OBS sources (name, gpios, ...)
@@ -50,16 +49,13 @@ class OBStally:
         initialise the enviroment
         """
         debug("__init__()")
-        # basic python environment initialisation
-        GPIO.setmode(GPIO.BCM)
-        GPIO.setwarnings(False)
-        GPIO.cleanup()
         # read xml an init leds based on config
         if not self.read_xml_config():
             return
         # OBS websocket initialisation
-        self.obs_connect()
         self.initialise_leds()
+        self.obs_connect()
+        self.get_actual_status()
         # run endless
         self.run()
         
@@ -94,6 +90,9 @@ class OBStally:
             for child in root.find('obswebsocket').findall('*'):
                 debug(child.tag, child.text)
                 self.obs[child.tag] = child.text
+                # memorize gpio to warn if already in use
+                if "gpio" in child.tag:
+                    gpios.append(int(child.text))
         except AttributeError:
             print ("ERROR: could not find 'obswebsocket' in XMLfile '{}'".format(
                 XML_FILE))
@@ -110,11 +109,16 @@ class OBStally:
         initialise LED objects and gpios
         """
         debug("initialise_leds()")
+        if self.obs['gpio_connected']:
+            self.obs['gpio_connected'] = LED(self.obs['gpio_connected'])
+            self.obs['gpio_connected'].off()
         for o in (self.scenes, self.sources):
             for s in o:
                 for typ in o[s]['gpio']:
                     o[s]['led'][typ] = LED(o[s]['gpio'][typ])
                     o[s]['led'][typ].off()
+
+    def get_actual_status(self):
         # enable LED if source is actualy on preview
         scene = self.ws.call(requests.GetPreviewScene())
         self.on_preview(scene, scene.getName())
@@ -136,6 +140,8 @@ class OBStally:
         self.ws.register(self.on_switch, events.SwitchScenes)
         self.ws.register(self.on_preview, events.PreviewSceneChanged)
         self.ws.connect()
+        if self.obs['gpio_connected']:
+            self.obs['gpio_connected'].on()
     
     '''
     LED SWITCHING
