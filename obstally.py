@@ -57,6 +57,7 @@ class OBStally:
         # read xml an init leds based on config
         if not self.read_xml_config():
             return
+        # OBS websocket initialisation
         self.obs_connect()
         self.initialise_leds()
         # run endless
@@ -116,10 +117,10 @@ class OBStally:
                     o[s]['led'][typ].off()
         # enable LED if source is actualy on preview
         scene = self.ws.call(requests.GetPreviewScene())
-        self.on_preview(scene, scene.datain['name'])
+        self.on_preview(scene, scene.getName())
         # enable LED if scene is actualy on program
         scene = self.ws.call(requests.GetCurrentScene())
-        self.on_switch(scene, scene.datain['name'])
+        self.on_switch(scene, scene.getName())
 
     def obs_connect(self):
         """
@@ -139,7 +140,7 @@ class OBStally:
     '''
     LED SWITCHING
     '''
-    def _switch_led(self, typ, message, name = None):
+    def _switch_led(self, typ, message, name = None, active = False):
         debug("... switch_led({})".format(typ))
         if not name:
             name = message.getSceneName().encode('utf-8')
@@ -197,7 +198,7 @@ class OBStally:
 
     def on_switch(self, message, name = None):
         #debug("on_preview()")
-        self._switch_led('program', message, name)
+        self._switch_led('program', message, name, True)
 
     def on_preview(self, message, name = None):
         #debug("on_preview()")
