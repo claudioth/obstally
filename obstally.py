@@ -21,6 +21,9 @@ XML_FILE = "{}/obstally.xml".format(dirname(abspath(__file__)))
 from gpiozero import LED
 from obswebsocket import obsws, events, requests
 from xml.etree import ElementTree
+import sched
+from time import time
+from threading import Timer
 
 
 def debug(*txt):
@@ -40,6 +43,10 @@ class OBStally:
 
     # CACHE: Last activated LED for a the spefic types
     act_gpio = { 'program': None, 'preview': None }
+    # CACHE: actual connection status
+    connected = False
+    # CACHE: timestamp of last heartbeat (seconds, float)
+    last_heartbeat = None
     
     '''
     INITIALISATION
@@ -56,6 +63,8 @@ class OBStally:
         self.initialise_leds()
         self.obs_connect()
         self.get_actual_status()
+        # prepare schedular to monitor connection
+        Timer(1, self.check_connection, ()).start()
         # run endless
         self.run()
         
@@ -137,21 +146,32 @@ class OBStally:
         self.ws = obsws(self.obs['host'],
                    self.obs['port'],
                    self.obs['pass'])
+        self.ws.register(self.on_heartbeat, events.Heartbeat)        
         self.ws.register(self.on_switch, events.SwitchScenes)
         self.ws.register(self.on_preview, events.PreviewSceneChanged)
         self.ws.connect()
         if self.obs['gpio_connected']:
             self.obs['gpio_connected'].on()
+        self.connected = True
+        self.last_heartbeat = time()
+        self.ws.call(requests.SetHeartbeat(True))
     
     '''
     LED SWITCHING
     '''
-    def _switch_led(self, typ, message, name = None, active = False):
+    def _switch_led(self, typ, message, name = None):
+        """
+        enable/disable LEDs conforming the recived message-type
+        """
         debug("... switch_led({})".format(typ))
         if not name:
             name = message.getSceneName().encode('utf-8')
 
         def _switch_gpio(objtyp, objects, typ, selection):
+            """
+            subfunction to handle all configured GPIOs
+            conforming the featuare settings
+            """
             on = False
             self.act_gpio[typ] = None
             for s in objects:
@@ -204,18 +224,58 @@ class OBStally:
 
     def on_switch(self, message, name = None):
         #debug("on_preview()")
-        self._switch_led('program', message, name, True)
+        self._switch_led('program', message, name)
 
     def on_preview(self, message, name = None):
         #debug("on_preview()")
         self._switch_led('preview', message, name)
 
+    '''
+    Stay connected
+    '''
+    def on_heartbeat(self, message):
+        """
+        memorize last hearbeat received from OBS
+        """
+        debug("... on_heartbeat({})")
+        self.last_heartbeat = time()
+
+    def check_connection(self):
+        """
+        check actuall connection status based on last 'heartbeat'
+        (this function is called asynchronusly every second)
+        """
+        debug("... check_connection()")
+        diff = time() - self.last_heartbeat # time-diff in seconds
+        # if actually not connected, try to reconnect
+        if diff > 2:
+            self.connected = False # force LED re-init
+            if self.obs['gpio_connected']:
+                self.obs['gpio_connected'].blink()
+            self.ws.reconnect()
+        # if sucessfull reconnected, initialise LEDs again
+        connected = self.ws.ws.connected
+        if connected and not self.connected:
+            self.connected = True
+            self.get_actual_status()
+        # update LED to show actual status
+        if self.obs['gpio_connected']:
+            if connected:
+                self.obs['gpio_connected'].on()
+            else:
+                self.obs['gpio_connected'].off()
+        # recheck connection in X seconds
+        Timer(1, self.check_connection, ()).start()
+
+    '''
+    MAIN
+    '''
     def run(self):
         """
         rund endless
         """
         # FIXME: ok for the beginning...
-        debug("run()")
+        debug("... run()")
         try:
             while True:
                 pass
