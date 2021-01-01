@@ -83,6 +83,24 @@ class tally(wsclient):
     '''
     LED SWITCHING
     '''
+    def _all_leds_off(self, typ):
+        """
+        switch all LEDs off
+        """
+        for o in (self.scenes, self.sources):
+            for s in o:
+                for typ in o[s]['gpio']:
+                    o[s]['led'][typ].off()
+
+    def _all_leds_on(self, typ):
+        """
+        switch all LEDs off
+        """
+        for o in (self.scenes, self.sources):
+            for s in o:
+                for typ in o[s]['gpio']:
+                    o[s]['led'][typ].on()
+
     def _switch_led(self, typ, message, name = None):
         """
         enable/disable LEDs conforming the recived message-type
@@ -145,6 +163,15 @@ class tally(wsclient):
             on = _switch_gpio('sources', self.sources, typ, new_sources)
         if not on:
             print ("       : '{}' on, but unknown".format(name))
+
+    def on_disconnect(self):
+        """
+        perform actions when connection is lost
+        """
+        super(tally, self).on_disconnect()
+        # all LEDs ON
+        self._all_leds_on('program')
+        self._all_leds_on('preview')
 
     def on_switch(self, message, name = None):
         #debug("on_preview()")

@@ -12,8 +12,8 @@ Example:
 * problem: the network connection to OBS ist lost
 * auto-reaction: try to reconnect to OBS automaticaly
 
-## Expected enviroment
-The tool was writen for the following context:
+## Enviroment
+The tool was written for the following context:
 * runs on a raspberry pi (or probably any linux computer)
 * OBS ist best used in "studio mode", but "none studio" should also work
   (but will not react when changing visibility of sources of a scene in program)
@@ -26,6 +26,7 @@ The tool was writen for the following context:
   (will not wait for first switch/preview event)
 * connection to OBS is monitored and will try to reconnect if lost
 * start order is uncritical, OBS can be (re-)started anytime
+* if not connected all CAM LEDs are switched on
 * (optional) connection status can be visualized by an extra LED
 
 ## LED colors
