@@ -9,107 +9,37 @@ __author__      = "Claudio Thomas"
 __copyright__   = "Copyright 2020"
 __license__     = "GPL"
 
-DEBUG = True  # additional debugging output
-ONLY_ONE_LED_PER_CAM_ON = True  # Same CAM can not be preview and program at the same time
-MAX_ONE_LED_ON = True  # maximal one LED enabled at the same time, program LED has priority
-
-# Please define here the name of your XMLS config file
-# (by default it is saved on the save path as the executable)
-from os.path import abspath, dirname
-XML_FILE = "{}/obstally.xml".format(dirname(abspath(__file__)))
-
-
+# standard
+# third party
 from gpiozero import LED
-from obswebsocket import obsws, events, requests
-from xml.etree import ElementTree
-import os
-from time import time, sleep
-from threading import Timer
+from obswebsocket import events, requests
+# own
+from wsclient import wsclient
+from _contants import ONLY_ONE_LED_PER_CAM_ON, MAX_ONE_LED_ON
+from _debugtools import debug
 
 
-def debug(*txt):
-    if DEBUG:
-        print(">> {}".format(txt[0] if len(txt) == 1 else txt))
-
-
-class OBStally:
+class OBStally(wsclient):
     ''' configuration attributes '''
-    # the obswebsocket (host, port, pass)
-    obs = {'host': None, 'port': None, 'pass': None, 'gpio_connected': None }
     # known OBS scenes (name, gpios, ...)
     scenes = {}
     # known OBS sources (name, gpios, ...)
     sources = {}
 
     ''' runtime changebled/status attributes '''
-    # the websocket object
-    ws = None
     # last activated LED for a the spefic type
     act_gpio = { 'program': None, 'preview': None }
-    # actual connection status
-    connected = False
-    # timestamp in secons of last heartbeat (float)
-    last_heartbeat = None
-
-    '''
-    INITIALISATION
-    '''
-    def __init__(self):
-        """
-        initialise the enviroment
-        """
-        debug("__init__()")
-        # read xml an init leds based on config
-        if not self.read_xml_config():
-            return
-        # OBS websocket initialisation
-        self.initialise_leds()
-        self.obs_connect()
-        # prepare schedular to monitor connection
-        Timer(1, self.check_connection, ()).start()
-        # run endless
-        self.run()
 
     def read_xml_config(self):
         """
         read the configuration from the XML-file and save the values
         to the dictionaries
         """
-        def _readSubTags(root, tag, gpios):
-            result = {}
-            for s in root.findall(tag):
-                content = {'name': "", "gpio": {}, 'led': {} }
-                for child in s.findall('*'):
-                    if "gpio" in child.tag:
-                        nr = int(child.text)
-                        if nr in gpios:
-                            print("ERROR: GPIO {} can only be used once!".format(nr))
-                            return False
-                        content["gpio"][child.tag[5:]] = nr
-                        gpios.append(nr)
-                    else:
-                        content[child.tag] = child.text
-                result[content['name']] = content
-                debug(content)                    
-            return result
-
-        debug("read_xml_config()")
-        xml = ElementTree.parse(XML_FILE)
-        root = xml.getroot()
-        gpios = []
-        try:
-            for child in root.find('obswebsocket').findall('*'):
-                debug(child.tag, child.text)
-                self.obs[child.tag] = child.text
-                # memorize gpio to warn if already in use
-                if "gpio" in child.tag:
-                    gpios.append(int(child.text))
-        except AttributeError:
-            print ("ERROR: could not find 'obswebsocket' in XMLfile '{}'".format(
-                XML_FILE))
+        if not super(OBStally, self).read_xml_config():
             return False
-        self.scenes = _readSubTags(root, 'scene', gpios)
-        self.sources = _readSubTags(root, 'source', gpios)
+        debug(self.__class__.__name__ + ".read_xml_config()")
+        self.scenes = self._readSubTags(self.rootxml, 'scene')
+        self.sources = self._readSubTags(self.rootxml, 'source')
 
         if not self.scenes and not self.sources:
             print("WARNING: no scenes/sources configured!")
@@ -119,10 +49,8 @@ class OBStally:
         """
         initialise LED objects and gpios
         """
-        debug("initialise_leds()")
-        if self.obs['gpio_connected']:
-            self.obs['gpio_connected'] = LED(self.obs['gpio_connected'])
-            self.obs['gpio_connected'].off()
+        super(OBStally, self).initialise_leds()
+        debug(self.__class__.__name__ + ".initialise_leds()")
         for o in (self.scenes, self.sources):
             for s in o:
                 for typ in o[s]['gpio']:
@@ -142,23 +70,15 @@ class OBStally:
         scene = self.ws.call(requests.GetCurrentScene())
         self.on_switch(scene, scene.getName())
 
-    def obs_connect(self):
+    def register_obs_events(self):
         """
-        initialisation ob OBS websocket
+        register request to be receivesd from OBS
         """
-        debug("obs_connect({}:{})".format(
-            self.obs['host'],
-            self.obs['port'],
-            ))
-        self.ws = obsws(self.obs['host'],
-                   self.obs['port'],
-                   self.obs['pass'])
-        self.ws.register(self.on_heartbeat, events.Heartbeat)        
+        super(OBStally, self).register_obs_events()
+        debug("OBStally.register_obs_events()")
         self.ws.register(self.on_switch, events.SwitchScenes)
         self.ws.register(self.on_preview, events.PreviewSceneChanged)
-        # try to get a connection to OBS
-        while self.try_to_connect() != True:
-            pass
+
 
     '''
     LED SWITCHING
@@ -235,73 +155,6 @@ class OBStally:
         self._switch_led('preview', message, name)
 
     '''
-    Stay connected
-    '''
-    def on_heartbeat(self, message = None, reason=""):
-        """
-        memorize last hearbeat received from OBS
-        """
-        debug("... on_heartbeat({})".format(reason))
-        self.connected = True
-        self.last_heartbeat = time()
-
-    def check_connection(self):
-        """
-        check actuall connection status based on last 'heartbeat'
-        (this function is called asynchronusly every second)
-        """
-        debug("... check_connection()")
-        diff = time() - self.last_heartbeat # time-diff in seconds
-        # if actually not connected, try to reconnect
-        if diff > 5:
-            debug("... . diff = {}, connection = {}/{}".format(
-                str(diff), self.ws.ws.connected, self.connected))
-            self.try_to_connect()
-        # recheck connection in X seconds
-        Timer(2, self.check_connection, ()).start()
-
-    def try_to_connect(self):
-        """
-        try to (re-)establish a socket connection to OBS
-        """
-        if self.obs['gpio_connected']:
-            self.obs['gpio_connected'].blink()
-        try:
-            # check if host is reachable
-            cmd = "ping -c 1 -w 1 " + self.obs['host'] + " >/dev/null 2>&1 "
-            debug("... . (10s) " + cmd)
-            result = 1
-            # try 10s before given up...
-            for _i in range(0, 20):
-                result = os.system(cmd)
-                if result == 0:
-                    break
-                sleep(.5)
-            # if host reachable (online) reconnect
-            if result == 0:
-                debug("... . reconnect()")
-                # FIXME: reconnect takes tooooo long!
-                self.ws.reconnect()
-                # if sucessfull reconnected, initialise LEDs
-                if self.ws.ws.connected:
-                    self.on_heartbeat(reason="force")
-                    self.get_actual_status()
-                    # advice OBS to send us a heartbeat (to monitor the connection)
-                    # BUG: needs to be reenabled after reconnect
-                    # BUG: if connection loss is <120s than will receive multiple events
-                    self.ws.call(requests.SetHeartbeat(True))
-                    # update LED to show actual status
-                    if self.obs['gpio_connected']:
-                        self.obs['gpio_connected'].on()
-                    return True
-            else:
-                debug("... . ping not sucessfull, wait...")
-                return False
-        except Exception as e:
-            debug(">>>> EXCEPTION: " + str(e))
-            pass
-
-    '''
     MAIN
     '''
     def run(self):
@@ -309,7 +162,7 @@ class OBStally:
         rund endless
         """
         # FIXME: ok for the beginning...
-        debug("... run()")
+        debug("... " + self.__class__.__name__ + ".run()")
         try:
             while True:
                 pass
@@ -319,4 +172,4 @@ class OBStally:
 
 if __name__ == "__main__":
     # execute only if run as a script
-    tally = OBStally()
+    test_obj = OBStally()
