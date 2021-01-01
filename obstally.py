@@ -181,8 +181,6 @@ class OBStally:
         # try to get a connection to OBS
         while self.try_to_connect() != True:
             pass
-        # advice OB to send us a heartbeat (to monitor the connection)
-        self.ws.call(requests.SetHeartbeat(True))
 
     '''
     LED SWITCHING
@@ -261,11 +259,12 @@ class OBStally:
     '''
     Stay connected
     '''
-    def on_heartbeat(self, message = None):
+    def on_heartbeat(self, message = None, reason=""):
         """
         memorize last hearbeat received from OBS
         """
-        debug("... on_heartbeat()")
+        debug("... on_heartbeat({})".format(reason))
+        self.connected = True
         self.last_heartbeat = time()
 
     def check_connection(self):
@@ -276,10 +275,12 @@ class OBStally:
         debug("... check_connection()")
         diff = time() - self.last_heartbeat # time-diff in seconds
         # if actually not connected, try to reconnect
-        if diff > 2:
+        if diff > 5:
+            debug("... . diff = {}, connection = {}/{}".format(
+                str(diff), self.ws.ws.connected, self.connected))
             self.try_to_connect()
         # recheck connection in X seconds
-        Timer(1, self.check_connection, ()).start()
+        Timer(2, self.check_connection, ()).start()
 
     def try_to_connect(self):
         """
@@ -293,7 +294,7 @@ class OBStally:
             debug("... . (10s) " + cmd)
             result = 1
             # try 10s before given up...
-            for i in range(0, 20):
+            for _i in range(0, 20):
                 result = os.system(cmd)
                 if result == 0:
                     break
@@ -305,8 +306,12 @@ class OBStally:
                 self.ws.reconnect()
                 # if sucessfull reconnected, initialise LEDs
                 if self.ws.ws.connected:
-                    self.on_heartbeat()
+                    self.on_heartbeat(reason="force")
                     self.get_actual_status()
+                    # advice OBS to send us a heartbeat (to monitor the connection)
+                    # BUG: needs to be reenabled after reconnect
+                    # BUG: if connection loss is <120s than will receive multiple events
+                    self.ws.call(requests.SetHeartbeat(True))
                     # update LED to show actual status
                     if self.obs['gpio_connected']:
                         self.obs['gpio_connected'].on()
@@ -314,7 +319,8 @@ class OBStally:
             else:
                 debug("... . ping not sucessfull, wait...")
                 return False
-        except Exception:
+        except Exception as e:
+            debug(">>>> EXCEPTION: " + str(e))
             pass
 
     '''
