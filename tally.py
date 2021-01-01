@@ -19,7 +19,7 @@ from _contants import ONLY_ONE_LED_PER_CAM_ON, MAX_ONE_LED_ON
 from _debugtools import debug
 
 
-class OBStally(wsclient):
+class tally(wsclient):
     ''' configuration attributes '''
     # known OBS scenes (name, gpios, ...)
     scenes = {}
@@ -35,9 +35,9 @@ class OBStally(wsclient):
         read the configuration from the XML-file and save the values
         to the dictionaries
         """
-        if not super(OBStally, self).read_xml_config():
+        if not super(tally, self).read_xml_config():
             return False
-        debug(self.__class__.__name__ + ".read_xml_config()")
+        debug("tally.read_xml_config()")
         self.scenes = self._readSubTags(self.rootxml, 'scene')
         self.sources = self._readSubTags(self.rootxml, 'source')
 
@@ -49,8 +49,8 @@ class OBStally(wsclient):
         """
         initialise LED objects and gpios
         """
-        super(OBStally, self).initialise_leds()
-        debug(self.__class__.__name__ + ".initialise_leds()")
+        super(tally, self).initialise_leds()
+        debug("tally.initialise_leds()")
         for o in (self.scenes, self.sources):
             for s in o:
                 for typ in o[s]['gpio']:
@@ -74,8 +74,8 @@ class OBStally(wsclient):
         """
         register request to be receivesd from OBS
         """
-        super(OBStally, self).register_obs_events()
-        debug("OBStally.register_obs_events()")
+        super(tally, self).register_obs_events()
+        debug("tally.register_obs_events()")
         self.ws.register(self.on_switch, events.SwitchScenes)
         self.ws.register(self.on_preview, events.PreviewSceneChanged)
 
@@ -162,7 +162,7 @@ class OBStally(wsclient):
         rund endless
         """
         # FIXME: ok for the beginning...
-        debug("... " + self.__class__.__name__ + ".run()")
+        debug("... tally.run()")
         try:
             while True:
                 pass
@@ -172,4 +172,4 @@ class OBStally(wsclient):
 
 if __name__ == "__main__":
     # execute only if run as a script
-    test_obj = OBStally()
+    test_obj = tally()
