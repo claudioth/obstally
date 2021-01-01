@@ -1,36 +1,15 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-#
-# Tallylight sollution for OBS and a Rasperry Pi
-# - best used with obs studio mode
-# - but should work also without studio, but will not react when
-#   changing visibility of sources of a scene
-# 
-# Features:
-# * configuration by real XML, not depenting on tag ordering
-# * LEDs status can be configurted in dependence of scenes and/or sources
-# * support unlimited amount of scene and sources
-# * after startup LEDs will proactive be set conforming actual OBS status
-#   (will not wait for first switch/preview event)
-# * connection to OBS is monitored and will try to reconnect if lost
-# * possible LEDs enabled conbinations: (LED color depends on
-#   hardware configuration, ex: red for "in program", orange for "in preview")
-#   A) basic: 
-#      - CAM in programm => red LED enabled
-#      - CAM in preview => orange LED enabled
-#      in basic-mode any conbination is possible, also both LEDs on at the same time
-#   B) max. 1 LED per CAM enabled:
-#      same as (A), but in case a CAM is also "in preview", only the
-#      "in program" LED will be enabled
-#   C) max. 1 LED type enabled:
-#      same as (B), but maximal 1 LED type will be enabled at the same time.
-#      examples:
-#      - CAM 1 in program AND CAM 2 in preview: only LED for CAM 1 will be enabled
-#      - unknown scene/source in program AND CAM 1 in preview: CAM 1 LED shown
-#      - CAM 1 and CAM 2 in program, CAM 3 in preview: CAM 1+2 will be enabled
-#      - unknown scene/source in program AND CAM 1+2 in preview: CAM 1+2 LED shown
+"""
+OBS Tallylights via OBS-Websockets and GPIOzero.
 
-DEBUG = False  # additional debugging output
+This Toolset was written to support sundays-church-streaming
+"""
+__author__      = "Claudio Thomas"
+__copyright__   = "Copyright 2020"
+__license__     = "GPL"
+
+DEBUG = True  # additional debugging output
 ONLY_ONE_LED_PER_CAM_ON = True  # Same CAM can not be preview and program at the same time
 MAX_ONE_LED_ON = True  # maximal one LED enabled at the same time, program LED has priority
 
@@ -44,7 +23,6 @@ from gpiozero import LED
 from obswebsocket import obsws, events, requests
 from xml.etree import ElementTree
 import os
-import sched
 from time import time, sleep
 from threading import Timer
 
