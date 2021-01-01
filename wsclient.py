@@ -20,6 +20,10 @@ from _contants import XML_FILE
 from _debugtools import debug
 
 
+''' constants '''
+CON_CHECK_DELAY = 2
+
+
 class wsclient(object):
     ''' configuration attributes '''
     # the obswebsocket (host, port, pass)
@@ -52,7 +56,7 @@ class wsclient(object):
         self.initialise_leds()
         self.connection_start()
         # prepare schedular to monitor connection
-        Timer(1, self.connection_check, ()).start()
+        Timer(CON_CHECK_DELAY, self.connection_check, ()).start()
         # run endless
         self.run()
 
@@ -95,17 +99,17 @@ class wsclient(object):
     def connection_check(self):
         """
         check actuall connection status based on last 'heartbeat'
-        (this function is called asynchronusly every second)
+        (this function is called asynchronusly every X seconds)
         """
         debug("... " + "wsclient.connection_check()")
         diff = time() - self.last_heartbeat # time-diff in seconds
         # if actually not connected, try to reconnect
-        if diff > 5:
+        if diff > (CON_CHECK_DELAY + CON_CHECK_DELAY + 1):
             debug("... . diff = {}, connection = {}/{}".format(
                 str(diff), self.ws.ws.connected, self.connected))
             self.connection_try()
         # recheck connection in X seconds
-        Timer(2, self.connection_check, ()).start()
+        Timer(CON_CHECK_DELAY, self.connection_check, ()).start()
 
     def connection_start(self):
         """
@@ -115,9 +119,7 @@ class wsclient(object):
             self.obs['host'],
             self.obs['port'],
             ))
-        self.ws = obsws(self.obs['host'],
-                   self.obs['port'],
-                   self.obs['pass'])
+        self.ws = obsws(self.obs['host'], self.obs['port'], self.obs['pass'])
         self.register_obs_events()
         # try to get a connection to OBS
         while self.connection_try() != True:
@@ -127,8 +129,7 @@ class wsclient(object):
         """
         try to (re-)establish a socket connection to OBS
         """
-        if self.obs['gpio_connected']:
-            self.obs['gpio_connected'].blink()
+        self.on_disconnect()
         try:
             # check if host is reachable
             cmd = "ping -c 1 -w 1 " + self.obs['host'] + " >/dev/null 2>&1 "
@@ -147,15 +148,7 @@ class wsclient(object):
                 self.ws.reconnect()
                 # if sucessfull reconnected, initialise LEDs
                 if self.ws.ws.connected:
-                    self.on_heartbeat(reason="force")
-                    self.get_actual_status()
-                    # advice OBS to send us a heartbeat (to monitor the connection)
-                    # BUG: needs to be reenabled after reconnect
-                    # BUG: if connection loss is <120s than will receive multiple events
-                    self.ws.call(requests.SetHeartbeat(True))
-                    # update LED to show actual status
-                    if self.obs['gpio_connected']:
-                        self.obs['gpio_connected'].on()
+                    self.on_reconnect()
                     return True
             else:
                 debug("... . ping not sucessfull, wait...")
@@ -164,6 +157,19 @@ class wsclient(object):
             debug(">>>> EXCEPTION: " + str(e))
             pass
 
+    """
+    EVENTS to be extended/overwritten on inheritance
+    """
+    def on_disconnect(self):
+        """
+        perform actions when connection is lost
+        
+        Can be extended by inherited classes:
+           super(XXX, self).on_disconnect()
+        """
+        if self.obs['gpio_connected']:
+            self.obs['gpio_connected'].blink()
+
     def on_heartbeat(self, message = None, reason=""):
         """
         memorize last hearbeat received from OBS
@@ -171,6 +177,24 @@ class wsclient(object):
         debug("... " + "wsclient.on_heartbeat({})".format(reason))
         self.connected = True
         self.last_heartbeat = time()
+
+    def on_reconnect(self):
+        """
+        perform actions when connection is established
+        
+        Can be extended by inherited classes:
+           super(XXX, self).on_reconnect()
+        """
+        self.on_heartbeat(reason="force")
+        self.get_actual_status()
+        # advice OBS to send us a heartbeat (to monitor the connection)
+        # BUG: needs to be reenabled after reconnect
+        # BUG: if connection loss is <120s than will receive multiple events
+        self.ws.call(requests.SetHeartbeat(True))
+        # update LED to show actual status
+        if self.obs['gpio_connected']:
+            self.obs['gpio_connected'].on()
+
 
     """
     FUNCTIONS to be extended/overwritten on inheritance
