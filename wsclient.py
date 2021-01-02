@@ -8,6 +8,7 @@ __copyright__   = "Copyright 2020"
 __license__     = "GPL"
 
 # standard
+import signal
 from os import system
 from time import time, sleep
 from threading import Timer
@@ -38,6 +39,8 @@ class wsclient(object):
     last_heartbeat = None
     # the root-xml tree
     rootxml = None
+    # internal flag to stop all processing if True
+    stop = False
     # the websocket object
     ws = None
 
@@ -49,16 +52,50 @@ class wsclient(object):
         initialise the enviroment
         """
         debug("wsclient.__init__()")
+        # register the signals to be caught
+        signal.signal(signal.SIGHUP, self.on_SIGHUP)
+        signal.signal(signal.SIGINT, self.on_SIGINT)
+        signal.signal(signal.SIGTERM, self.on_SIGTERM)
+        # read xml + init leds based on config and OBS websocket initialisation
+        self.reload()
+        # prepare schedular to monitor connection
+        Timer(CON_CHECK_DELAY, self.connection_check, ()).start()
+        # run endless
+        self.run()
+
+    def reload(self):
+        """
+        (Re-)load the XML config, initialise all and start connection
+        """
+        debug("wsclient.reload()")
+        self.shutdown_leds()
         # read xml an init leds based on config
         if not self.read_xml_config():
             return
         # OBS websocket initialisation
         self.initialise_leds()
         self.connection_start()
-        # prepare schedular to monitor connection
-        Timer(CON_CHECK_DELAY, self.connection_check, ()).start()
-        # run endless
-        self.run()
+
+    def run(self):
+        """
+        rund endless
+        """
+        # FIXME: ok for the beginning...
+        debug("... wsclient.run()")
+        try:
+            while not self.stop:
+                pass
+        except KeyboardInterrupt:
+            pass
+
+    def shutdown(self):
+        """
+        close/stop the programm
+        """
+        self.stop = True
+        self.ws.disconnect()
+        self.shutdown_leds()
+        raise KeyboardInterrupt()
 
     def _readSubTags(self, root, tag):
         """
@@ -81,18 +118,6 @@ class wsclient(object):
             debug(content)                    
         return result
 
-    def run(self):
-        """
-        rund endless
-        """
-        # FIXME: ok for the beginning...
-        debug("... wsclient.run()")
-        try:
-            while True:
-                pass
-        except KeyboardInterrupt:
-            pass
-
     '''
     OBS CONNECTION
     '''
@@ -109,7 +134,8 @@ class wsclient(object):
                 str(diff), self.ws.ws.connected, self.connected))
             self.connection_try()
         # recheck connection in X seconds
-        Timer(CON_CHECK_DELAY, self.connection_check, ()).start()
+        if not self.stop:
+            Timer(CON_CHECK_DELAY, self.connection_check, ()).start()
 
     def connection_start(self):
         """
@@ -160,6 +186,31 @@ class wsclient(object):
     """
     EVENTS to be extended/overwritten on inheritance
     """
+    def on_SIGHUP(self, signum, frame):
+        """
+        signal-processing: 
+        received SIGHUP (1), nowadays a request to reload the config
+        """
+        print('Signal handler called with signal', signum)
+        self.reload()
+
+    def on_SIGINT(self, signum, frame):
+        """
+        received SIGINT (2), interrupt from keyboard (CTRL + C).
+        shutdown the programm
+        """
+        print('Signal handler called with signal', signum)
+        self.shutdown()
+
+    def on_SIGTERM(self, signum, frame):
+        """
+        signal-processing: 
+        received SIGTERM (15), Termination signal
+        """
+        print('Signal handler called with signal', signum)
+        self.shutdown()
+
+
     def on_disconnect(self):
         """
         perform actions when connection is lost
@@ -253,7 +304,21 @@ class wsclient(object):
         """
         debug("wsclient.register_obs_events()")
         self.ws.register(self.on_heartbeat, events.Heartbeat)        
+
+    def shutdown_leds(self):
+        """
+        switchoff LED objects and gpios
         
+        Can be extended by inherited classes:
+           super(XXX, self).shutdown_leds()
+        """
+        debug("wsclient.shutdown_leds()")
+        if self.obs['gpio_connected'] and \
+           isinstance(self.obs['gpio_connected'], LED):
+            self.obs['gpio_connected'].off()
+            self.gpios.remove(int(str(self.obs['gpio_connected'].pin)[4:]))
+            self.obs['gpio_connected'] = None
+    
 
 if __name__ == "__main__":
     # execute only if run as a script
