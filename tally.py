@@ -83,15 +83,6 @@ class tally(wsclient):
     '''
     LED SWITCHING
     '''
-    def _all_leds_off(self, typ):
-        """
-        switch all LEDs off
-        """
-        for o in (self.scenes, self.sources):
-            for s in o:
-                for typ in o[s]['gpio']:
-                    o[s]['led'][typ].off()
-
     def _all_leds_on(self, typ):
         """
         switch all LEDs off
@@ -163,6 +154,23 @@ class tally(wsclient):
             on = _switch_gpio('sources', self.sources, typ, new_sources)
         if not on:
             print ("       : '{}' on, but unknown".format(name))
+
+    def shutdown_leds(self):
+        """
+        switchoff LED objects and gpios
+        
+        Can be extended by inherited classes:
+           super(XXX, self).shutdown_leds()
+        """
+        debug("tally.shutdown_leds()")
+        for o in (self.scenes, self.sources):
+            for s in o:
+                for typ in o[s]['gpio']:
+                    if o[s]['led'][typ] and isinstance(o[s]['led'][typ], LED):
+                        o[s]['led'][typ].off()
+                        self.gpios.remove(int(str(o[s]['led'][typ].pin)[4:]))
+                        o[s]['led'][typ] = None
+        super(tally, self).shutdown_leds()
 
     def on_disconnect(self):
         """
