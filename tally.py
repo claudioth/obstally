@@ -56,9 +56,11 @@ class tally(wsclient):
         for o in (self.scenes, self.sources):
             for s in o:
                 for typ in o[s]['gpio']:
+                    pin = abs(o[s]['gpio'][typ])
+                    active_high = o[s]['gpio'][typ] > 0
                     o[s]['led'][typ] = LED(
-                        o[s]['gpio'][typ],
-                        active_high=o[s]['inverted'])
+                        pin=pin,
+                        active_high=active_high)
                     o[s]['led'][typ].off()
 
     def get_actual_status(self):

@@ -112,16 +112,18 @@ class wsclient(object):
         """
         result = {}
         for s in root.findall(tag):
-            content = {'name': "", "gpio": {}, 'led': {}, 'inverted': False }
+            content = {'name': "", "gpio": {}, 'led': {} }
             for child in s.findall('*'):
                 if "gpio" in child.tag:
                     nr = int(child.text)
                     if nr in self.gpios:
                         print("ERROR: GPIO {} can only be used once!".format(nr))
                         return False
+                    self.gpios.append(abs(nr))
                     if 'inverted' in child.attrib:
-                        content["inverted"] = True
-                    self.gpios.append(nr)
+                        content["gpio"][child.tag[5:]] = abs(nr) * (-1)
+                    else:
+                        content["gpio"][child.tag[5:]] = nr
                 else:
                     content[child.tag] = child.text
             debug(content)                
