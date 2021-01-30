@@ -26,7 +26,14 @@ CON_CHECK_DELAY = 2
 
 
 class wsclient(object):
-    ''' configuration attributes '''
+    '''
+    this class 
+    - load the XML configuration
+    - initialize the connection to OBS and the LEDs
+    - monitors the connectino to OBS an reconnect if necessary
+    - reacts to system-signals, like SIGHUP to reload the config 
+    - disconnects from LEDs an reset the LEDs when exiting
+     '''
     # the obswebsocket (host, port, pass)
     obs = {'host': None, 'port': None, 'pass': None, 'gpio_connected': None }
     # the gpios in use
@@ -105,14 +112,15 @@ class wsclient(object):
         """
         result = {}
         for s in root.findall(tag):
-            content = {'name': "", "gpio": {}, 'led': {} }
+            content = {'name': "", "gpio": {}, 'led': {}, 'inverted': False }
             for child in s.findall('*'):
                 if "gpio" in child.tag:
                     nr = int(child.text)
                     if nr in self.gpios:
                         print("ERROR: GPIO {} can only be used once!".format(nr))
                         return False
-                    content["gpio"][child.tag[5:]] = nr
+                    if 'inverted' in child.attrib:
+                        content["inverted"] = True
                     self.gpios.append(nr)
                 else:
                     content[child.tag] = child.text
