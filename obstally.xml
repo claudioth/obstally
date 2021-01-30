@@ -20,13 +20,13 @@
 	</scene>
 	<!-- <scene>...</scene>	-->
 	<!-- OBS sources definitions -->
-	<source>
-		<name>PTZ1</name> <!-- Scene-Name -->
+	<source> 
+		<name>PTZ1</name> <!-- Source-Name -->
 	    <gpio_preview inverted="true">26</gpio_preview> <!-- Define GPIO for on-preview-LED -->
 		<gpio_program inverted="true">6</gpio_program>  <!-- Define GPIO for on-program-LED -->
 	</source>
 	<source>
-		<name>PTZ2</name> <!-- Scene-Name -->
+		<name>PTZ2</name> <!-- Source-Name -->
 	    <gpio_preview inverted="true">20</gpio_preview> <!-- Define GPIO for on-preview-LED -->
 		<gpio_program inverted="true">12</gpio_program> <!-- Define GPIO for on-program-LED -->
 	</source>

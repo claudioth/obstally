@@ -73,7 +73,6 @@ apt install nginx php-fpm php-xml python-gpiozero
 pip install obs-websocket-py
 ```
 * setup your NGINX to support PHP-scripts
-
 * link or copy the content of the "www" subfolder to your webfolder
 
 ```shell
@@ -85,15 +84,82 @@ cp -r ./www/* /var/www/html/tally/
     http://localhost/tally/
 
 * Setup OBS-Tally Settings (IP, password, port from OBS-Websockets, scenes, sources and GPIO-Ports)
-
 * Connect LEDs to the matching GPIO and try
-
 * If you want to use OBSTally with an relais-card, you need to use the Inverted-Version
-
 * install this script as a service to automatically startup when booting your raspberry
 
-### License
+### Configuration
+The configuration is done by editing the XML-file.
 
+**Attention:** each GPIO port can only be used *once*
+
+**Hint:** the GPIO port can also be inverted. Just add an attribute to the tag 
+(inverted="true") or simple set a - before the GPIO number.
+
+#### obswebsocket
+Here are the connection settings to OBS defined
+* **host**: The hostname or IP-address to connect to
+* **port**: (optional) the port to be used for connection, by default 4444
+* **pass**: (optional) a password for connection authentication, default is empty
+* **gpio_connected**: a GPIO number where a LED could be connected to visualise
+  the connection-status:
+    - *off*: service ist not running
+    - *flashing*: trying to connect to OBS
+    - *on*: connected to OBS
+
+```xml
+	<obswebsocket>
+		<host>192.168.10.137</host>
+		<port>4444</port>
+		<pass/>
+		<gpio_connected>19</gpio_connected>
+	</obswebsocket>
+```
+
+#### scene
+You can define several scene to LED combinations. Each scene is defined by:
+* **name**: then name of the OBS scene
+* **gpio_preview**: a GPIO number where a LED is connected to show,
+  that the scene is actualy been shown in the "preview". 
+* **gpio_program**: a GPIO number where a LED is connected to show,
+  that the scene is actualy been shown in the "program". 
+
+```XML
+	<scene>
+		<name>HDMI 1</name>
+		<gpio_preview>2</gpio_preview>
+		<gpio_program>3</gpio_program>
+	</scene>
+	<scene>
+		<!-- example for use inverted signals -->
+		<name>HDMI 2</name>
+		<gpio_preview>-4</gpio_preview>
+		<gpio_program inverted="true">5</gpio_program>
+	</scene>
+```
+
+#### source
+You can define several source to LED combinations. Each source is defined by:
+* **name**: then name of the OBS source
+* **gpio_preview**: a GPIO number where a LED is connected to show,
+  that the scene is actualy been shown in the "preview". 
+* **gpio_program**: a GPIO number where a LED is connected to show,
+  that the scene is actualy been shown in the "program". 
+
+```XML
+	<source>
+		<name>PTZ1</name>
+		<gpio_preview>26</gpio_preview>
+		<gpio_program>6</gpio_program>
+	</source>
+	<source>
+		<!-- example for use inverted signals -->
+		<name>PTZ2</name>
+		<gpio_preview>-20</gpio_preview>
+		<gpio_program inverted="true">12</gpio_program>
+	</source>
+```
+### License
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
