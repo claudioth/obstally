@@ -41,6 +41,8 @@ class tally(wsclient):
         self.scenes = self._readSubTags(self.rootxml, 'scene')
         self.sources = self._readSubTags(self.rootxml, 'source')
 
+        if self.scenes == False or self.sources == False:
+            return False
         if not self.scenes and not self.sources:
             print("WARNING: no scenes/sources configured!")
         return True

@@ -29,7 +29,7 @@ class wsclient(object):
     ''' configuration attributes '''
     # the obswebsocket (host, port, pass)
     obs = {'host': None, 'port': None, 'pass': None, 'gpio_connected': None }
-    # th gpios in use
+    # the gpios in use
     gpios = []
     
     ''' runtime changebled/status attributes '''
@@ -57,7 +57,8 @@ class wsclient(object):
         signal.signal(signal.SIGINT, self.on_SIGINT)
         signal.signal(signal.SIGTERM, self.on_SIGTERM)
         # read xml + init leds based on config and OBS websocket initialisation
-        self.reload()
+        if not self.reload():
+            return
         # prepare schedular to monitor connection
         Timer(CON_CHECK_DELAY, self.connection_check, ()).start()
         # run endless
@@ -71,10 +72,11 @@ class wsclient(object):
         self.shutdown_leds()
         # read xml an init leds based on config
         if not self.read_xml_config():
-            return
+            return False
         # OBS websocket initialisation
         self.initialise_leds()
         self.connection_start()
+        return True
 
     def run(self):
         """
@@ -114,8 +116,14 @@ class wsclient(object):
                     self.gpios.append(nr)
                 else:
                     content[child.tag] = child.text
-            result[content['name']] = content
-            debug(content)                    
+            debug(content)                
+            if content['name']:
+                result[content['name']] = content
+            else:
+                print("ERROR: missing a <name> for {} in {}!".format(
+                    s.tag,
+                    XML_FILE))
+                return False
         return result
 
     '''
@@ -280,7 +288,13 @@ class wsclient(object):
             return False         
         """
         debug("wsclient.read_xml_config()")
-        xml = ElementTree.parse(XML_FILE)
+        try:
+            xml = ElementTree.parse(XML_FILE)
+        except ElementTree.ParseError as e:
+            print ("ERROR: mal formed 'config' in XMLfile '{}'".format(
+                   XML_FILE))
+            print (e)
+            return False
         self.rootxml = xml.getroot()
         try:
             for child in self.rootxml.find('obswebsocket').findall('*'):
