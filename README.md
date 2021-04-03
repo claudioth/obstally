@@ -7,7 +7,8 @@ This Toolset was written to support sundays-church-streaming
 On church a lot of work is done by voluntiers, so we can not exspect deep
 network and computer knowhow. 
 
-So the tool is written automatically fix problems as much as possible automaticaly.
+So the tool is written automatically fix problems as much as possible.
+
 Example:
 * problem: the network connection to OBS ist lost
 * auto-reaction: try to reconnect to OBS automaticaly
@@ -20,7 +21,7 @@ The tool was written for the following context:
 
 ## Features
 * configuration by real XML, not depenting on tag ordering
-* LEDs status can be configurted in dependence of scenes and/or sources
+* LEDs status can be configured in dependence of scenes and/or sources
 * support unlimited amount of scene and sources
 * after startup LEDs will proactive be set conforming actual OBS status
   (will not wait for first switch/preview event)
@@ -32,11 +33,11 @@ The tool was written for the following context:
 ## LED colors
 LED colors depends (of course) on your personal hardware configuration.
 
-Wie use a green LED to visualise the connection status:
+Wie use a blue LED to visualise the connection status:
 * blinking: not connected, trying to reconnect
 * permanently glowing: connected
 
-We use for each CAM 2 LEDs with following colors:
+We use for each CAM, 2 LEDs with following colors:
 * red LED for "in program"
 * orange LED for "in preview"
 
@@ -64,13 +65,14 @@ your preference and needs:
 In the sufolder "install" is a script that can be used for automatical installation
 
 #### manually
-But if you prefere to install ist manually, here a list of todos:
+If you prefere to install it manually, here a list of todos:
 * install all needed third-party-software
 
 ```shell
 apt update
 apt install nginx php-fpm php-xml python-gpiozero
 pip install obs-websocket-py
+git checkout https://github.com/claudioth/obstally
 ```
 * setup your NGINX to support PHP-scripts
 * link or copy the content of the "www" subfolder to your webfolder
