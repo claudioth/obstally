@@ -94,14 +94,18 @@ The configuration is done by editing the XML-file.
 **Attention:** each GPIO port can only be used *once*
 
 **Hint:** the GPIO port can also be inverted. Just add an attribute to the tag 
-(inverted="true") or simple set a - before the GPIO number.
+(`inverted="true"`) or simple set a - before the GPIO number.
 
 #### obswebsocket
 Here are the connection settings to OBS defined
-* **host**: The hostname or IP-address to connect to
-* **port**: (optional) the port to be used for connection, by default 4444
-* **pass**: (optional) a password for connection authentication, default is empty
-* **gpio_connected**: a GPIO number where a LED could be connected to visualise
+* `host`: The hostname or IP-address to connect to
+    - in case an attribute `network` is given, the host value will only be used, if the own IP matches to the given network.
+    All not matching networks will be ignored.
+    - A mix of both is possible, if not matching network was found, than the value without attribute will be used as fallback.
+	  
+* `port`: (optional) the port to be used for connection, by default 4444
+* `pass`: (optional) a password for connection authentication, default is empty
+* `gpio_connected`: a GPIO number where a LED could be connected to visualise
   the connection-status:
     - *off*: service ist not running
     - *flashing*: trying to connect to OBS
@@ -109,7 +113,9 @@ Here are the connection settings to OBS defined
 
 ```xml
 	<obswebsocket>
-		<host>192.168.10.137</host>
+		<host>192.168.2.137</host> <!-- default host -->
+		<!-- but the following would be used if network matches -->
+		<host network="192.168.10">192.168.10.137</host>
 		<port>4444</port>
 		<pass/>
 		<gpio_connected>19</gpio_connected>
@@ -118,10 +124,10 @@ Here are the connection settings to OBS defined
 
 #### scene
 You can define several scene to LED combinations. Each scene is defined by:
-* **name**: then name of the OBS scene
-* **gpio_preview**: a GPIO number where a LED is connected to show,
+* `name`: then name of the OBS scene
+* `gpio_preview`: a GPIO number where a LED is connected to show,
   that the scene is actualy been shown in the "preview". 
-* **gpio_program**: a GPIO number where a LED is connected to show,
+* `gpio_program`: a GPIO number where a LED is connected to show,
   that the scene is actualy been shown in the "program". 
 
 ```XML
@@ -140,10 +146,10 @@ You can define several scene to LED combinations. Each scene is defined by:
 
 #### source
 You can define several source to LED combinations. Each source is defined by:
-* **name**: then name of the OBS source
-* **gpio_preview**: a GPIO number where a LED is connected to show,
+* `name`: then name of the OBS source
+* `gpio_preview`: a GPIO number where a LED is connected to show,
   that the scene is actualy been shown in the "preview". 
-* **gpio_program**: a GPIO number where a LED is connected to show,
+* `gpio_program`: a GPIO number where a LED is connected to show,
   that the scene is actualy been shown in the "program". 
 
 ```XML

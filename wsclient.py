@@ -9,6 +9,8 @@ __license__     = "GPL"
 
 # standard
 import signal
+import socket
+
 from os import system
 from time import time, sleep
 from threading import Timer
@@ -59,6 +61,8 @@ class wsclient(object):
         initialise the enviroment
         """
         debug("wsclient.__init__()")
+        ip = self.get_ip_address()
+        debug("IP = {}".format(ip))
         # register the signals to be caught
         signal.signal(signal.SIGHUP, self.on_SIGHUP)
         signal.signal(signal.SIGINT, self.on_SIGINT)
@@ -201,6 +205,14 @@ class wsclient(object):
             debug(">>>> EXCEPTION: " + str(e))
             pass
 
+    def get_ip_address(self):
+        """
+        find out what is my IP-address
+        """
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        return s.getsockname()[0]
+
     """
     EVENTS to be extended/overwritten on inheritance
     """
@@ -307,12 +319,30 @@ class wsclient(object):
             return False
         self.rootxml = xml.getroot()
         try:
+            ip = self.get_ip_address()
+            hostset = False
             for child in self.rootxml.find('obswebsocket').findall('*'):
+                if "host" == child.tag:
+                    # host can only be set once!
+                    if hostset: continue
+                    if 'network' in child.attrib:
+                        net = child.attrib["network"]
+                        if ip[0:len(net)] == net:
+                            hostset = True
+                        else:
+                            continue
+                    debug(child.tag, child.text)
+                    self.obs[child.tag] = child.text
+                    continue
                 debug(child.tag, child.text)
                 self.obs[child.tag] = child.text
                 # memorize gpio to warn if already in use
                 if "gpio" in child.tag:
                     self.gpios.append(int(child.text))
+            if not self.obs["host"]:
+                print ("ERROR: no 'host' defined to connect to in XMLfile'{}'".format(
+                    XML_FILE))
+                return False
         except AttributeError:
             print ("ERROR: could not find 'obswebsocket' in XMLfile '{}'".format(
                 XML_FILE))

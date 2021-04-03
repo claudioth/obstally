@@ -2,7 +2,8 @@
 <data>
 	<!-- OBS Websocket configuration -->
 	<obswebsocket>
-		<host>192.168.10.137</host>
+		<host>192.168.2.137</host>
+		<host network="192.168.10">192.168.10.137</host>
 		<port>4444</port>
 		<pass/>
 		<gpio_connected>19</gpio_connected>
